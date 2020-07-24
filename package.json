@@ -1,0 +1,27 @@
+{
+  "name": "fair-drive-lib",
+  "version": "0.0.1",
+  "description": "Fairdrive lib is a javascript library to connect any (d)app to Fairdrive. It gives the (d)app a Userobject (username, avatar) and a private key with which the (d)app can write data in the user's Fairdrive. ",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha test --timeout 15000"
+  },
+  "author": "Michelle Plur",
+  "license": "MIT",
+  "dependencies": {
+    "@erebos/keccak256": "^0.13.1",
+    "@erebos/secp256k1": "^0.10.0",
+    "@erebos/swarm-browser": "^0.13.0",
+    "base32-decode": "^1.0.0",
+    "base32-encode": "^1.1.1",
+    "chai": "^4.2.0",
+    "chai-spies": "^1.0.0",
+    "eth-crypto": "^1.6.0",
+    "ethers": "^5.0.5",
+    "fds.js": "https://github.com/significance/fds.js.git",
+    "mocha": "^8.0.1",
+    "node-fetch": "^2.6.0",
+    "scrypt-js": "^3.0.1",
+    "utf8-encoder": "^1.0.1"
+    }
+}
