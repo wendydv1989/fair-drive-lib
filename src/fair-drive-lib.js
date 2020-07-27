@@ -11,79 +11,116 @@ const te = new textEncoding.TextEncoder("utf-8")
 
 const { toHex, hexToByteArray, byteArrayToHex, numbersToByteArray, stringToUint8Array } = require('./conversion')
 
-//const fds = new FDS()
+function Fairdrive() {
+    const bee = new BeeClient("http://localhost:8080/chunks", null)
+    this.bee = bee
+}
 
-function Fairdrive() { }
-
-// Fairdrive.prototype.getFeed = async function (address, topic) {
-//     const res = await fds.Account.SwarmStore.SF.get(address, topic)
-//     return JSON.parse(res)
-// }
+Fairdrive.prototype.getFeed = async function (topic, privateKey) {
+    const wallet = new swarm.unsafeWallet(Buffer.from(privateKey))
+    const rawTopic = te.encode(topic);
+    const uint8 = new Uint8Array(32);
+    uint8.set(rawTopic, 0)
+    const cleanTopic = uint8
+    const rawRes = await this.bee.getFeedWithTopic(cleanTopic, wallet)
+    const res = td.decode(rawRes.chunk.data)
+    return res
+}
 
 Fairdrive.prototype.setFeed = async function (topic, data, privateKey) {
-    const bee = new BeeClient("http://localhost:8080/chunks", null)
     const wallet = new swarm.unsafeWallet(Buffer.from(privateKey))
     const rawTopic = te.encode(topic);
     const uint8 = new Uint8Array(32);
     uint8.set(rawTopic, 0)
     const cleanTopic = uint8
     const cleanData = te.encode(JSON.stringify(data))
-    const feed = await bee.updateFeedWithTopic(
+    const feed = await this.bee.updateFeedWithTopic(
         cleanTopic,
         cleanData,
         wallet)
     return feed
 }
 
-// Fairdrive.prototype.newFairdrive = async function () {
-//     let bytes = ethers.utils.randomBytes(16);
-//     let language = ethers.wordlists.en;
-//     let randomMnemonic = await ethers.utils.entropyToMnemonic(bytes, language)
-//     let mnemonic = randomMnemonic
-//     let wallet = await ethers.utils.HDNode.fromMnemonic(randomMnemonic)
-//     const documentsFolder = await this.newFolder("Documents", mnemonic, 0)
-//     const picturesFolder = await this.newFolder("Pictures", mnemonic, 1)
-//     const moviesFolder = await this.newFolder("Movies", mnemonic, 0)
-//     const moviesFolder = await this.newFolder("Movies", mnemonic, 0)
-//     const moviesFolder = await this.newFolder("Movies", mnemonic, 0)
+Fairdrive.prototype.newFairdrive = async function () {
+    let keyPairNonce = 0
+    let bytes = ethers.utils.randomBytes(16);
+    let language = ethers.wordlists.en;
+    let randomMnemonic = await ethers.utils.entropyToMnemonic(bytes, language)
+    let mnemonic = randomMnemonic
+    let wallet = await ethers.utils.HDNode.fromMnemonic(randomMnemonic)
 
-//     const tempFolderId = new Date().toISOString()
-//     const tempFolderFeed = await fds.Account.SwarmStore.SF.set(
-//         wallet1.address,
-//         'fairdrive-temp',
-//         wallet1.privateKey,
-//         {
-//             keyIndex: 1,
-//             name: "Temporary",
-//             ownerAddress: wallet1.address,
-//             content: {}
-//         })
-//     const dappFolderFeed = await fds.Account.SwarmStore.SF.set(
-//         wallet2.address,
-//         'fairdrive-dappdata',
-//         wallet2.privateKey,
-//         {
-//             keyIndex: 2,
-//             name: "DappData",
-//             ownerAddress: wallet2.address,
-//             content: {}
-//         })
-//     const hash2 = await fds.Account.SwarmStore.SF.set(
-//         wallet.address,
-//         'fairdrive',
-//         wallet.privateKey,
-//         {
-//             "Temporary": {
-//                 name: 'Temporary',
-//                 address: wallet1.address
-//             },
-//             "DappData": {
-//                 name: 'DappData',
-//                 address: wallet2.address
-//             }
-//         })
-//     return { mnemonic, wallet }
-// }
+    const baseDrive = await this.setFeed(
+        'fairdrive',
+        {
+            keyPairNonce: keyPairNonce,
+            lastUpdated: new Date().toISOString(),
+            folders: {
+            }
+        },
+        hexToByteArray(wallet.privateKey)
+    )
+
+    const documentsFolder = await this.newFolder("Documents", undefined, mnemonic)
+    const picturesFolder = await this.newFolder("Pictures", undefined, mnemonic)
+    const moviesFolder = await this.newFolder("Movies", undefined, mnemonic)
+    const dappconnectFolder = await this.newFolder("DappConnect", undefined, mnemonic)
+    const todoListAppFolder = await this.newFolder("ToDOListDapp", dappconnectFolder, mnemonic)
+
+    return { mnemonic, wallet }
+}
+
+Fairdrive.prototype.getFairdrive = async function (mnemonic) {
+    let wallet = ethers.utils.HDNode.fromMnemonic(mnemonic)
+    let privateKey = hexToByteArray(wallet.privateKey)
+    let fairdrive = await this.getFeed("fairdrive", privateKey)
+    return JSON.parse(fairdrive)
+}
+
+Fairdrive.prototype.newFolder = async function (folderName, path, mnemonic) {
+    let wallet = await ethers.utils.HDNode.fromMnemonic(mnemonic)
+    const fairdrive = await this.getFairdrive(mnemonic)
+    console.debug(fairdrive)
+    const newNonce = fairdrive.keyPairNonce + 1
+    const folderWallet = wallet.derivePath("m/44'/60'/0'/0/" + newNonce)
+    const newId = new Date().toISOString()
+    const newFolderFeed = await this.setFeed(
+        newId,
+        {
+            id: newId,
+            keyIndex: newNonce,
+            name: folderName,
+            ownerAddress: folderWallet.address,
+            nonce: 0,
+            content: {}
+        },
+        hexToByteArray(folderWallet.privateKey)
+    )
+
+    if (path) {
+        console.debug('setwithPath: ', path, fairdrive.folders[path])
+        fairdrive.folders[path].content[newId] = {
+            id: newId,
+            name: folderName,
+            lastUpdated: new Date().toISOString(),
+            address: folderWallet.address,
+            content: {}
+        }
+    } else {
+        fairdrive.folders[newId] = {
+            id: newId,
+            name: folderName,
+            lastUpdated: new Date().toISOString(),
+            address: folderWallet.address,
+            content: {}
+        }
+    }
+
+    fairdrive.keyPairNonce = newNonce
+
+    const updateFairdrive = await this.setFeed('fairdrive', fairdrive, hexToByteArray(wallet.privateKey))
+
+    return newId
+}
 
 // Fairdrive.prototype.createConnect = async function (appname, appicon) {
 //     const PRIVATE_KEY_BYTES_LENGTH = 32
@@ -117,7 +154,7 @@ Fairdrive.prototype.setFeed = async function (topic, data, privateKey) {
 
 // Fairdrive.prototype.authenticateApp = async function (folderName, mnemonic, address, keyPairNonce, givenPrivateKey, username, avatar) {
 
-//     const res = await this.newFolder(folderName, mnemonic, keyPairNonce, username, avatar)
+//     const res = await this.newConnectFolder(folderName, mnemonic, keyPairNonce, username, avatar)
 
 //     const newSwarmFeed = await this.setFeed(
 //         address,
@@ -130,6 +167,7 @@ Fairdrive.prototype.setFeed = async function (topic, data, privateKey) {
 
 //     return true
 // }
+
 // Fairdrive.prototype.resolveConnect = async function (id, givenPrivateKey) {
 //     if (!givenPrivateKey) throw 'no private key!'
 //     if (!id) throw 'no shortcode!'
@@ -145,26 +183,5 @@ Fairdrive.prototype.setFeed = async function (topic, data, privateKey) {
 
 //     return result
 // }
-
-// Fairdrive.prototype.newFolder = async function (folderName, mnemonic, keyPairNonce) {
-//     let wallet = await ethers.utils.HDNode.fromMnemonic(mnemonic)
-//     const folderWallet = wallet.derivePath(`"m/44'/60'/'/0/` + keyPairNonce + `"`)
-//     const newNonce = keyPairNonce++
-//     const newId = new Date().toISOString()
-//     const newFolderFeed = await this.setFeed(
-//         folderWallet.address,
-//         folderName,
-//         folderWallet.privateKey,
-//         {
-//             id: newId,
-//             keyIndex: newNonce,
-//             name: folderName,
-//             ownerAddress: folderWallet.address,
-//             content: {}
-//         })
-
-//     return {id: newId, feed: newFolderFeed, address: folderWallet.address, nonce: newNonce }
-// }
-
 
 module.exports = Fairdrive

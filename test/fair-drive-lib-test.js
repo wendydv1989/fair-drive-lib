@@ -14,21 +14,56 @@ const wallet = new swarm.unsafeWallet()
 
 const readFileAsync = util.promisify(fs.readFile)
 
+let hash = ""
+
 chai.use(spies)
 const expect = chai.expect
 
 const fd = new Fairdrive
-
+let mnemonic = ""
+let fairdrivewallet = {}
+let keyPairNonce = ""
+let myFairdrive = {}
 console.log()
+
 describe('Fairdrive', () => {
     describe('Testing', () => {
+        it('can set a feed', async () => {
+            const res = await fd.setFeed("topic", { username: "michelle" }, wallet.privateKey)
+            hash = res
+        })
+        it('can get a feed', async () => {
+
+            const res = await fd.getFeed("topic", wallet.privateKey)
+        })
+        it('creates a new fairdrive', async () => {
+            const fairdrive = await fd.newFairdrive()
+            fairdrivewallet = fairdrive.wallet
+            mnemonic = fairdrive.mnemonic
+            keyPairNonce = fairdrive.keyPairNonce
+        })
+        it('retrieves the new fairdrive', async () => {
+            const fairdrive = await fd.getFairdrive(mnemonic)
+            myFairdrive = fairdrive
+            console.log(fairdrive)
+        })
+        // it('creates a dappfolder in /dappConnect', async () => {
+        //     let dappConnectFolder
+        //     valuetomatch = 'DappConnect'
+        //     let folders = myFairdrive.folders
+        //     let dappConnectId = ''
+        //     Object.keys(folders).some(function (k) {
+        //         if (folders[k].name === valuetomatch) {
+        //             dappConnectId = folders[k].id;
+        //         }
+        //     });
+        //     //const newDappFolder = await fd.newConnectFolder("toDoListApp", dappConnectId, mnemonic)
+        //     console.log(newDappFolder)
+        // })
         // it(appname + ' creates a request to connect', async () => {
         //     const res = await fd.createConnect(appname, appicon).then(res => {
         //         console.log(res)
         //     })
         // })
-        it('can set a feed', async () => {
-            const res = await fd.setFeed("topic", { username: "michelle" }, wallet.privateKey)
-        })
     })
 })

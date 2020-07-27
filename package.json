@@ -1,5 +1,5 @@
 {
-  "name": "fair-drive-lib",
+  "name": "fairdrive-lib",
   "version": "0.0.1",
   "description": "Fairdrive lib is a javascript library to connect any (d)app to Fairdrive. It gives the (d)app a Userobject (username, avatar) and a private key with which the (d)app can write data in the user's Fairdrive. ",
   "main": "index.js",
