@@ -19,7 +19,8 @@ let hash = ""
 chai.use(spies)
 const expect = chai.expect
 
-const fd = new Fairdrive
+const fd = new Fairdrive('http://localhost:8080/chunks')
+
 let mnemonic = ""
 let fairdrivewallet = {}
 let keyPairNonce = ""

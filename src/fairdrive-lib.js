@@ -11,8 +11,9 @@ const te = new textEncoding.TextEncoder("utf-8")
 
 const { toHex, hexToByteArray, byteArrayToHex, numbersToByteArray, stringToUint8Array } = require('./conversion')
 
-function Fairdrive() {
-    const bee = new BeeClient("http://localhost:8080/chunks", null)
+function Fairdrive(beeGateway) {
+    this.beeGateway = beeGateway || "http://localhost:8080/chunks"
+    const bee = new BeeClient(this.beeGateway, null)
     this.bee = bee
 }
 
@@ -22,7 +23,7 @@ Fairdrive.prototype.getFeed = async function (topic, privateKey) {
     const uint8 = new Uint8Array(32);
     uint8.set(rawTopic, 0)
     const cleanTopic = uint8
-    const rawRes = await this.bee.getFeedWithTopic(cleanTopic, wallet)
+    const rawRes = await this.bee.getFeedWithSalt(cleanTopic, wallet)
     const res = td.decode(rawRes.chunk.data)
     return res
 }
@@ -34,7 +35,7 @@ Fairdrive.prototype.setFeed = async function (topic, data, privateKey) {
     uint8.set(rawTopic, 0)
     const cleanTopic = uint8
     const cleanData = te.encode(JSON.stringify(data))
-    const feed = await this.bee.updateFeedWithTopic(
+    const feed = await this.bee.updateFeedWithSalt(
         cleanTopic,
         cleanData,
         wallet)
@@ -42,7 +43,6 @@ Fairdrive.prototype.setFeed = async function (topic, data, privateKey) {
 }
 
 Fairdrive.prototype.newFairdrive = async function () {
-    let keyPairNonce = 0
     let bytes = ethers.utils.randomBytes(16);
     let language = ethers.wordlists.en;
     let randomMnemonic = await ethers.utils.entropyToMnemonic(bytes, language)
@@ -52,9 +52,10 @@ Fairdrive.prototype.newFairdrive = async function () {
     const baseDrive = await this.setFeed(
         'fairdrive',
         {
-            keyPairNonce: keyPairNonce,
+            keyIndex: 0,
             lastUpdated: new Date().toISOString(),
-            folders: {
+            type: 'root',
+            content: {
             }
         },
         hexToByteArray(wallet.privateKey)
@@ -80,7 +81,7 @@ Fairdrive.prototype.newFolder = async function (folderName, path, mnemonic) {
     let wallet = await ethers.utils.HDNode.fromMnemonic(mnemonic)
     const fairdrive = await this.getFairdrive(mnemonic)
     console.debug(fairdrive)
-    const newNonce = fairdrive.keyPairNonce + 1
+    const newNonce = fairdrive.keyIndex + 1
     const folderWallet = wallet.derivePath("m/44'/60'/0'/0/" + newNonce)
     const newId = new Date().toISOString()
     const newFolderFeed = await this.setFeed(
@@ -88,6 +89,8 @@ Fairdrive.prototype.newFolder = async function (folderName, path, mnemonic) {
         {
             id: newId,
             keyIndex: newNonce,
+            lastUpdated: new Date().toISOString(),
+            type: 'folder',
             name: folderName,
             ownerAddress: folderWallet.address,
             nonce: 0,
@@ -97,17 +100,24 @@ Fairdrive.prototype.newFolder = async function (folderName, path, mnemonic) {
     )
 
     if (path) {
-        console.debug('setwithPath: ', path, fairdrive.folders[path])
-        fairdrive.folders[path].content[newId] = {
+        console.debug('setwithPath: ', path, fairdrive.content[path])
+        debugger
+        fairdrive.content[path].content[newId] = {
             id: newId,
+            keyIndex: newNonce,
+            lastUpdated: new Date().toISOString(),
+            type: 'folder',
             name: folderName,
             lastUpdated: new Date().toISOString(),
             address: folderWallet.address,
             content: {}
         }
     } else {
-        fairdrive.folders[newId] = {
+        fairdrive.content[newId] = {
             id: newId,
+            keyIndex: newNonce,
+            lastUpdated: new Date().toISOString(),
+            type: 'folder',
             name: folderName,
             lastUpdated: new Date().toISOString(),
             address: folderWallet.address,
@@ -115,9 +125,13 @@ Fairdrive.prototype.newFolder = async function (folderName, path, mnemonic) {
         }
     }
 
-    fairdrive.keyPairNonce = newNonce
+    fairdrive.keyIndex = newNonce
 
-    const updateFairdrive = await this.setFeed('fairdrive', fairdrive, hexToByteArray(wallet.privateKey))
+    const updateFairdrive = await this.setFeed(
+        'fairdrive',
+        fairdrive,
+        hexToByteArray(wallet.privateKey)
+    )
 
     return newId
 }
