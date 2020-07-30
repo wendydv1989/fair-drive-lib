@@ -20,11 +20,12 @@
     "eth-crypto": "^1.6.0",
     "ethers": "^5.0.5",
     "fds.js": "https://github.com/significance/fds.js.git",
+    "mmmagic": "^0.5.3",
     "mocha": "^8.0.1",
     "node-fetch": "^2.6.0",
+    "scrypt-js": "^3.0.1",
     "swarm-lowlevel": "git+https://gitlab.com/nolash/swarm-lowlevel-js",
     "text-encoding": "^0.7.0",
-    "utf8-encoder": "^1.0.1",
-    "scrypt-js": "^3.0.1"
+    "utf8-encoder": "^1.0.1"
   }
 }

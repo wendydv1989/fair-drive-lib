@@ -101,7 +101,6 @@ Fairdrive.prototype.newFolder = async function (folderName, path, mnemonic) {
 
     if (path) {
         console.debug('setwithPath: ', path, fairdrive.content[path])
-        debugger
         fairdrive.content[path].content[newId] = {
             id: newId,
             keyIndex: newNonce,
@@ -132,8 +131,44 @@ Fairdrive.prototype.newFolder = async function (folderName, path, mnemonic) {
         fairdrive,
         hexToByteArray(wallet.privateKey)
     )
-
     return newId
+}
+
+Fairdrive.prototype.newFile = async function (file, path, mnemonic, keyIndex) {
+    let wallet = await ethers.utils.HDNode.fromMnemonic(mnemonic)
+    const folderWallet = wallet.derivePath("m/44'/60'/0'/0/" + keyIndex)
+    const fairdrive = await this.getFairdrive(mnemonic)
+    const hash = await this.bee.uploadData(file.data)
+    const newId = new Date().toISOString()
+    const fileObject = {
+        id: newId,
+        lastUpdated: new Date().toISOString(),
+        type: 'file',
+        mime: file.mime,
+        name: file.name,
+        thumb: file.thumb,
+        content: hash
+    }
+
+    // add to fairdrive feed
+    if (path) {
+        const folderFeed = await this.getFeed(path, folderWallet.privateKey)
+        folderFeed.content[newId] = fileObject
+        const res = await this.setFeed(path, folderFeed, folderWallet.privateKey)
+        fairdrive.content[path].content[newId] = fileObject
+    } else {
+        fairdrive.content[newId] = fileObject
+    }
+
+    fairdrive.lastUpdated = newId
+
+    const updateFairdrive = await this.setFeed(
+        'fairdrive',
+        fairdrive,
+        hexToByteArray(wallet.privateKey)
+    )
+
+    return fairdrive
 }
 
 // Fairdrive.prototype.createConnect = async function (appname, appicon) {

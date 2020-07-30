@@ -2,7 +2,6 @@ const chai = require('chai')
 const spies = require('chai-spies')
 const util = require('util')
 const fs = require('fs')
-
 var path = require('path');
 
 const Fairdrive = require('../src/fairdrive-lib')
@@ -11,6 +10,11 @@ const appname = "tODOlIST"
 
 const swarm = require('swarm-lowlevel')
 const wallet = new swarm.unsafeWallet()
+
+var mmm = require('mmmagic'),
+    Magic = mmm.Magic;
+
+var magic = new Magic(mmm.MAGIC_MIME_TYPE);
 
 const readFileAsync = util.promisify(fs.readFile)
 
@@ -48,19 +52,31 @@ describe('Fairdrive', () => {
             myFairdrive = fairdrive
             console.log(fairdrive)
         })
-        // it('creates a dappfolder in /dappConnect', async () => {
-        //     let dappConnectFolder
-        //     valuetomatch = 'DappConnect'
-        //     let folders = myFairdrive.folders
-        //     let dappConnectId = ''
-        //     Object.keys(folders).some(function (k) {
-        //         if (folders[k].name === valuetomatch) {
-        //             dappConnectId = folders[k].id;
-        //         }
-        //     });
-        //     //const newDappFolder = await fd.newConnectFolder("toDoListApp", dappConnectId, mnemonic)
-        //     console.log(newDappFolder)
-        // })
+        it('uploads a file to fairdrive root', async () => {
+            let filePath = 'test/helloworld.txt'
+            var fileName = filePath.replace(/^.*[\\\/]/, '')
+            let mime = ""
+            magic.detectFile('test/helloworld.txt', function (err, result) {
+                if (err) throw err;
+                console.log('what file: ', result);
+                mime = result
+                // output on Windows with 32-bit node:
+                //    PE32 executable (DLL) (GUI) Intel 80386, for MS Windows
+            });
+
+            fileData = await readFileAsync('test/helloworld.txt')
+            const file = {
+                data: fileData,
+                mime: mime,
+                name: fileName,
+                thumb: "text"
+            }
+
+            const fairdrive = await fd.newFile(file, undefined, mnemonic, 0)
+            myFairdrive = fairdrive
+            console.log(fairdrive)
+        })
+
         // it(appname + ' creates a request to connect', async () => {
         //     const res = await fd.createConnect(appname, appicon).then(res => {
         //         console.log(res)
