@@ -52,6 +52,21 @@ describe('Fairdrive', () => {
             myFairdrive = fairdrive
             console.log(fairdrive)
         })
+        it('retrieves folder', async () => {
+            // find documents folder
+            const getKey = async (name) => {
+                for (const [key, value] of Object.entries(myFairdrive.content)) {
+                    const searchTerm = name
+                    if (value.name === searchTerm)
+                        return { key: value.id, keyIndex: value.keyIndex }
+                }
+            }
+            const folder = await getKey('Movies')
+            const path = folder.key
+            const keyIndex = folder.keyIndex
+            const resFolder = await fd.getFolder(path, keyIndex, mnemonic)
+            console.log(resFolder)
+        })
         it('uploads a file to fairdrive root', async () => {
             let filePath = 'test/helloworld.txt'
             var fileName = filePath.replace(/^.*[\\\/]/, '')
@@ -71,11 +86,12 @@ describe('Fairdrive', () => {
                 name: fileName,
                 thumb: "text"
             }
-
             const fairdrive = await fd.newFile(file, undefined, mnemonic, 0)
             myFairdrive = fairdrive
             console.log(fairdrive)
         })
+
+
 
         // it(appname + ' creates a request to connect', async () => {
         //     const res = await fd.createConnect(appname, appicon).then(res => {

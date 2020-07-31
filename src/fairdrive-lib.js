@@ -13,19 +13,25 @@ const { toHex, hexToByteArray, byteArrayToHex, numbersToByteArray, stringToUint8
 
 function Fairdrive(beeGateway) {
     this.beeGateway = beeGateway || "http://localhost:8080/chunks"
-    const bee = new BeeClient(this.beeGateway, null)
+    const bee = new BeeClient(this.beeGateway, { timeout: 10000 })
     this.bee = bee
 }
 
 Fairdrive.prototype.getFeed = async function (topic, privateKey) {
-    const wallet = new swarm.unsafeWallet(Buffer.from(privateKey))
-    const rawTopic = te.encode(topic);
-    const uint8 = new Uint8Array(32);
-    uint8.set(rawTopic, 0)
-    const cleanTopic = uint8
-    const rawRes = await this.bee.getFeedWithSalt(cleanTopic, wallet)
-    const res = td.decode(rawRes.chunk.data)
-    return res
+    try {
+        const wallet = new swarm.unsafeWallet(Buffer.from(privateKey))
+        const rawTopic = te.encode(topic);
+        const uint8 = new Uint8Array(32);
+        uint8.set(rawTopic, 0)
+        const cleanTopic = uint8
+        const rawRes = await this.bee.getFeedWithSalt(cleanTopic, wallet)
+        const res = td.decode(rawRes.chunk.data)
+        return res
+    } catch (error) {
+        console.error(error)
+        return error
+    }
+
 }
 
 Fairdrive.prototype.setFeed = async function (topic, data, privateKey) {
@@ -99,6 +105,9 @@ Fairdrive.prototype.newFolder = async function (folderName, path, mnemonic) {
         hexToByteArray(folderWallet.privateKey)
     )
 
+    const checkFeed = await this.getFeed(newId, hexToByteArray(folderWallet.privateKey))
+    console.debug('checkFeed:', checkFeed, 'nonce: ', newNonce, 'privateKey: ', folderWallet.privateKey)
+
     if (path) {
         console.debug('setwithPath: ', path, fairdrive.content[path])
         fairdrive.content[path].content[newId] = {
@@ -132,6 +141,17 @@ Fairdrive.prototype.newFolder = async function (folderName, path, mnemonic) {
         hexToByteArray(wallet.privateKey)
     )
     return newId
+}
+
+Fairdrive.prototype.getFolder = async function (path, keyIndex, mnemonic) {
+
+    let wallet = await ethers.utils.HDNode.fromMnemonic(mnemonic)
+    const folderWallet = wallet.derivePath("m/44'/60'/0'/0/" + keyIndex)
+    const folderPrivateKey = hexToByteArray(folderWallet.privateKey)
+    const folderPath = path
+    const folderFeed = await this.getFeed(folderPath, folderPrivateKey)
+    console.log(folderFeed)
+    return true
 }
 
 Fairdrive.prototype.newFile = async function (file, path, mnemonic, keyIndex) {
